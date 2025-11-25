@@ -1,0 +1,281 @@
+<!-- index.html -->
+<!doctype html>
+<html lang="id">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Tugas Sekolah — Web</title>
+  <style>
+    :root{--accent:#4f92ff;--muted:#e9e9e9;--danger:#e55;--card-radius:12px}
+    body{font-family:Inter, system-ui, Arial; margin:0; padding:20px; background:#fff;}
+    .app{max-width:420px;margin:0 auto;}
+    header{display:flex;align-items:center;justify-content:space-between;padding:12px 0}
+    h1{margin:0;font-size:20px}
+    .plus{width:36px;height:36px;border-radius:8px;background:#000;color:#fff;display:flex;align-items:center;justify-content:center;font-weight:700}
+    /* List */
+    .controls{margin:12px 0; display:flex; gap:12px; align-items:center}
+    .tag{background:var(--muted);padding:6px 12px;border-radius:8px;display:inline-flex;align-items:center;gap:8px}
+    .card{background:#f2f2f2;border-radius:12px;padding:12px;margin:12px 0;display:flex;align-items:center;justify-content:space-between;box-shadow:0 0 0 1px rgba(0,0,0,0.02) inset}
+    .card-left{flex:1}
+    .mapel{font-weight:700;color:#4a6bff;margin-bottom:6px}
+    .deadline{font-weight:700;color:#e55;margin-left:8px}
+    .task-title{font-size:14px; color:#111}
+    .actions{display:flex;align-items:center;gap:12px}
+    .checkbox{width:30px;height:30px;border-radius:6px;border:3px solid #111;background:#fff}
+    .remove{color:var(--danger);font-weight:700;cursor:pointer}
+    /* Form */
+    form{margin-top:18px}
+    label{display:block;margin:10px 0 6px;font-weight:700}
+    input[type="text"], textarea, .mapel-picker{width:100%;padding:12px;border-radius:10px;border:none;background:#e6e6e6;box-sizing:border-box}
+    textarea{min-height:80px;resize:vertical}
+    .btn{display:inline-block;padding:12px 18px;border-radius:12px;border:none;margin-top:12px;cursor:pointer;background:linear-gradient(90deg,#c8ffd6,#cde0ff);font-weight:700}
+    .small{font-size:13px;color:#666}
+    .empty{color:#999;padding:20px 0}
+    .top-row{display:flex;gap:12px;align-items:center}
+    .mapel-picker{display:flex;gap:8px;align-items:center}
+    .mapel-btn{padding:8px 12px;border-radius:8px;background:#dcdcdc;cursor:pointer}
+    .mapel-btn.active{background:#cfcfcf}
+    /* image preview from your uploaded screenshots */
+    .screens{display:flex;gap:8px;margin-top:14px}
+    .screens img{width:160px;border-radius:8px;box-shadow:0 6px 20px rgba(0,0,0,0.06)}
+    .error{color:#b00;margin-top:8px}
+  </style>
+</head>
+<body>
+  <div class="app">
+    <header>
+      <h1>Tugas Sekolah</h1>
+      <div class="plus">+</div>
+    </header>
+
+    <div class="controls">
+      <div class="tag">Mapel <span id="filterMapel" style="margin-left:8px;font-weight:700">semua</span></div>
+      <div class="small" id="status">Menyambung...</div>
+    </div>
+
+    <div id="list"></div>
+
+    <form id="form">
+      <label for="tugas">Ketik Tugas</label>
+      <input id="tugas" type="text" placeholder="Contoh: Bikin Cerpen" required />
+
+      <label>Pilih Mapel</label>
+      <div class="mapel-picker" id="mapelPicker">
+        <div class="mapel-btn" data-mapel="mtk">MTK</div>
+        <div class="mapel-btn" data-mapel="bindo">BINDO</div>
+        <div class="mapel-btn" data-mapel="ips">IPAS</div>
+        <div class="mapel-btn" data-mapel="sejarah">SEJARAH</div>
+      </div>
+
+      <label>Deadline</label>
+      <input id="deadline" type="date" />
+
+      <button class="btn" type="submit">+ Tambahkan Tugas</button>
+      <div id="msg" class="small"></div>
+    </form>
+
+    <div class="screens">
+      <!-- local file paths you uploaded; the dev instructions told me to reference them -->
+      <img src="/mnt/data/Screenshot from 2025-11-25 17-08-34.png" alt="ui1">
+      <img src="/mnt/data/Screenshot from 2025-11-25 17-08-40.png" alt="ui2">
+    </div>
+
+    <div id="error" class="error"></div>
+  </div>
+
+  <!-- Firebase SDKs (modular) -->
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/11.10.0/firebase-app.js";
+    import { getAnalytics } from "https://www.gstatic.com/firebasejs/11.10.0/firebase-analytics.js";
+    import {
+      getFirestore, collection, addDoc, onSnapshot, doc, deleteDoc, updateDoc, query, orderBy
+    } from "https://www.gstatic.com/firebasejs/11.10.0/firebase-firestore.js";
+    import {
+      getAuth, signInAnonymously, onAuthStateChanged
+    } from "https://www.gstatic.com/firebasejs/11.10.0/firebase-auth.js";
+
+    // --- firebase config (you provided this) ---
+    const firebaseConfig = {
+      apiKey: "AIzaSyAGS_00EGf85mU36rN6_J_3JEAsxvMzn5g",
+      authDomain: "universal-databases.firebaseapp.com",
+      projectId: "universal-databases",
+      storageBucket: "universal-databases.firebasestorage.app",
+      messagingSenderId: "238780443230",
+      appId: "1:238780443230:web:2286f232844108e53de2cf",
+      measurementId: "G-8TL3PKL1WL"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    try { getAnalytics(app); } catch(e){ /* analytics might fail on non-https */ }
+
+    const db = getFirestore(app);
+    const auth = getAuth(app);
+
+    // Try anonymous sign-in so we have an auth state (but note: UID won't match your rule's UID).
+    signInAnonymously(auth).catch((err)=>{
+      console.warn("Anon sign-in error:", err);
+      document.getElementById('error').textContent = "Gagal sign-in anonim: " + err.message;
+    });
+
+    const listEl = document.getElementById('list');
+    const form = document.getElementById('form');
+    const tugasInput = document.getElementById('tugas');
+    const deadlineInput = document.getElementById('deadline');
+    const mapelPicker = document.getElementById('mapelPicker');
+    const filterMapel = document.getElementById('filterMapel');
+    const statusEl = document.getElementById('status');
+    const msgEl = document.getElementById('msg');
+    const errorEl = document.getElementById('error');
+
+    let selectedMapel = "mtk";
+    let activeFilter = "semua";
+
+    // mapel buttons
+    mapelPicker.querySelectorAll('.mapel-btn').forEach(btn=>{
+      btn.addEventListener('click', ()=>{
+        mapelPicker.querySelectorAll('.mapel-btn').forEach(b=>b.classList.remove('active'));
+        btn.classList.add('active');
+        selectedMapel = btn.dataset.mapel.toLowerCase();
+      });
+    });
+    // default active
+    mapelPicker.querySelector('[data-mapel="mtk"]').classList.add('active');
+
+    // realtime listener for collection "webtugassekolah"
+    const colRef = collection(db, "webtugassekolah");
+    const q = query(colRef, orderBy('deadline_timestamp', 'asc'));
+
+    // keep in sync
+    onSnapshot(q, (snapshot) => {
+      listEl.innerHTML = "";
+      snapshot.forEach(docSnap=>{
+        const d = docSnap.data();
+        const id = docSnap.id;
+        const mapelLower = (d.mapel || "").toLowerCase();
+        if(activeFilter !== "semua" && mapelLower !== activeFilter) return; // filter client-side
+
+        const card = document.createElement('div');
+        card.className = "card";
+
+        const left = document.createElement('div');
+        left.className = "card-left";
+
+        const mapelSpan = document.createElement('div');
+        mapelSpan.className = "mapel";
+        mapelSpan.textContent = (d.mapel || "").toUpperCase();
+
+        const deadlineSpan = document.createElement('span');
+        deadlineSpan.className = "deadline";
+        deadlineSpan.textContent = d.deadline_display || "";
+
+        const title = document.createElement('div');
+        title.className = "task-title";
+        title.textContent = d.tugas || "";
+
+        left.appendChild(mapelSpan);
+        left.appendChild(deadlineSpan);
+        left.appendChild(title);
+
+        const actions = document.createElement('div');
+        actions.className = "actions";
+
+        const cb = document.createElement('input');
+        cb.type = "checkbox";
+        cb.className = "checkbox";
+        cb.checked = !!d.done;
+        cb.addEventListener('change', async ()=>{
+          try {
+            await updateDoc(doc(db, "webtugassekolah", id), { done: cb.checked });
+          } catch(e) {
+            console.error(e); errorEl.textContent = "Error update: " + e.message;
+          }
+        });
+
+        const del = document.createElement('div');
+        del.className = "remove";
+        del.textContent = "X";
+        del.addEventListener('click', async ()=>{
+          if(!confirm('Hapus tugas ini?')) return;
+          try {
+            await deleteDoc(doc(db, "webtugassekolah", id));
+          } catch(e) {
+            console.error(e); errorEl.textContent = "Error delete: " + e.message;
+          }
+        });
+
+        actions.appendChild(cb);
+        actions.appendChild(del);
+
+        card.appendChild(left);
+        card.appendChild(actions);
+        listEl.appendChild(card);
+      });
+      statusEl.textContent = "Terhubung";
+    }, (err) => {
+      console.error("snapshot error", err);
+      statusEl.textContent = "Error: " + err.message;
+      errorEl.textContent = err.message;
+    });
+
+    // form submit: write to Firestore
+    form.addEventListener('submit', async (ev)=>{
+      ev.preventDefault();
+      msgEl.textContent = "";
+      errorEl.textContent = "";
+      const tugasVal = (tugasInput.value || "").trim().toLowerCase();
+      const mapelVal = (selectedMapel || "").toLowerCase();
+      let deadlineVal = deadlineInput.value; // yyyy-mm-dd or empty
+
+      // format display dd/mm/yyyy if given
+      let deadlineDisplay = "";
+      let deadlineTimestamp = null;
+      if(deadlineVal){
+        // transform yyyy-mm-dd -> dd/mm/yyyy
+        const [y,m,d] = deadlineVal.split("-");
+        deadlineDisplay = `${d}/${m}/${y}`;
+        deadlineTimestamp = new Date(deadlineVal + "T00:00:00Z");
+      }
+
+      if(!tugasVal){
+        msgEl.textContent = "Isi tugas dulu.";
+        return;
+      }
+
+      try {
+        // fields should be all lowercase as you requested
+        const docRef = await addDoc(colRef, {
+          tugas: tugasVal,
+          mapel: mapelVal,
+          deadline: deadlineDisplay.toLowerCase(),
+          deadline_display: deadlineDisplay,
+          deadline_timestamp: deadlineTimestamp ? deadlineTimestamp.getTime() : null,
+          done: false,
+          created_at: Date.now()
+        });
+        tugasInput.value = "";
+        deadlineInput.value = "";
+        msgEl.textContent = "Tugas ditambahkan!";
+        setTimeout(()=> msgEl.textContent = "", 2000);
+      } catch(e) {
+        console.error(e);
+        errorEl.textContent = "Gagal menambahkan. Jika error tentang permission, periksa Firestore rules / auth.";
+      }
+    });
+
+    // simple filter UI: click mapel name to filter (example)
+    filterMapel.addEventListener('click', ()=>{
+      activeFilter = (activeFilter === "semua") ? selectedMapel : "semua";
+      filterMapel.textContent = activeFilter;
+    });
+
+    // auth state show UID (helpful for debugging rules)
+    onAuthStateChanged(auth, (user)=>{
+      if(user){
+        statusEl.textContent = "Auth uid: " + user.uid;
+      } else {
+        statusEl.textContent = "Not signed in";
+      }
+    });
+  </script>
+</body>
+</html>
