@@ -1,16 +1,17 @@
 {
-  "name": "Tugas Yasa",
-  "short_name": "Tugas",
+  "name": "Lucky Cyan",
+  "short_name": "Cyan",
   "start_url": "index.html",
   "display": "standalone",
   "background_color": "#f4f6f8",
   "theme_color": "#2563eb",
   "icons": [
     {
-      "src": "icon.jpg",
+      "src": "cyan.png",
       "sizes": "192x192",
-      "type": "image/jpg"
+      "type": "image/png"
     }
   ]
 }
+
 
