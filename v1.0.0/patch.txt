@@ -1,0 +1,1 @@
+I debugged the previous app and make a new one. added PWA features!
