@@ -1,0 +1,186 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SKAWAS</title>
+
+    <link rel="manifest" href="manifest.json">
+
+    <script>
+    if ("serviceWorker" in navigator) {
+        navigator.serviceWorker.register("service-worker.js");
+    }
+    </script>
+
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: Arial, Helvetica, sans-serif;
+        }
+
+        body {
+            background: #f4f6f8;
+            display: flex;
+            justify-content: center;
+        }
+
+        .app {
+            width: 100%;
+            max-width: 420px;
+            padding: 16px;
+        }
+
+        h1 {
+            text-align: center;
+            margin-bottom: 16px;
+            color: #1f2933;
+        }
+
+        .form {
+            background: #ffffff;
+            padding: 12px;
+            border-radius: 8px;
+            margin-bottom: 16px;
+        }
+
+        .form input, .form button {
+            width: 100%;
+            padding: 10px;
+            margin-bottom: 10px;
+            font-size: 14px;
+        }
+
+        .form button {
+            background: #2563eb;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            font-weight: bold;
+        }
+
+        .filter {
+            margin-bottom: 12px;
+        }
+
+        .task {
+            background: #ffffff;
+            padding: 12px;
+            border-radius: 8px;
+            margin-bottom: 10px;
+        }
+
+        .task h3 {
+            font-size: 16px;
+            margin-bottom: 4px;
+        }
+
+        .task small {
+            color: #555;
+        }
+
+        .task button {
+            margin-top: 8px;
+            width: 100%;
+            padding: 8px;
+            background: #dc2626;
+            color: white;
+            border: none;
+            border-radius: 6px;
+        }
+    </style>
+</head>
+<body>
+
+<div class="app">
+    <h1>SKAWAS</h1>
+
+    <div class="form">
+        <input type="text" id="judul" placeholder="Nama tugas">
+        <input type="text" id="mapel" placeholder="Mata pelajaran">
+        <input type="date" id="deadline">
+        <button onclick="tambahTugas()">Tambah Tugas</button>
+    </div>
+
+    <div class="filter">
+        <select id="filterMapel" onchange="renderTugas()">
+            <option value="">Semua Mapel</option>
+        </select>
+    </div>
+
+    <div id="listTugas"></div>
+</div>
+
+<script>
+    let tugas = JSON.parse(localStorage.getItem("tugas")) || [];
+
+    function simpan() {
+        localStorage.setItem("tugas", JSON.stringify(tugas));
+    }
+
+    function tambahTugas() {
+        const judul = document.getElementById("judul").value;
+        const mapel = document.getElementById("mapel").value;
+        const deadline = document.getElementById("deadline").value;
+
+        if (!judul || !mapel || !deadline) {
+            alert("Lengkapi semua data!");
+            return;
+        }
+
+        tugas.push({ judul, mapel, deadline });
+        simpan();
+
+        document.getElementById("judul").value = "";
+        document.getElementById("mapel").value = "";
+        document.getElementById("deadline").value = "";
+
+        renderTugas();
+        renderFilter();
+    }
+
+    function hapusTugas(index) {
+        tugas.splice(index, 1);
+        simpan();
+        renderTugas();
+        renderFilter();
+    }
+
+    function renderFilter() {
+        const filter = document.getElementById("filterMapel");
+        const mapelUnik = [...new Set(tugas.map(t => t.mapel))];
+
+        filter.innerHTML = `<option value="">Semua Mapel</option>`;
+        mapelUnik.forEach(m => {
+            filter.innerHTML += `<option value="${m}">${m}</option>`;
+        });
+    }
+
+    function renderTugas() {
+        const list = document.getElementById("listTugas");
+        const filter = document.getElementById("filterMapel").value;
+
+        list.innerHTML = "";
+
+        tugas.forEach((t, i) => {
+            if (filter && t.mapel !== filter) return;
+
+            list.innerHTML += `
+                <div class="task">
+                    <h3>${t.judul}</h3>
+                    <small>Mapel: ${t.mapel}</small><br>
+                    <small>Deadline: ${t.deadline}</small>
+                    <button onclick="hapusTugas(${i})">Hapus</button>
+                </div>
+            `;
+        });
+    }
+
+    renderFilter();
+    renderTugas();
+</script>
+
+</body>
+</html>
